@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { teamsApi, analyticsApi, seasonsApi } from '@/lib/api';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -32,13 +32,10 @@ export default function TeamDetailPage() {
 
   // Get state from URL params
   const urlTab = searchParams.get('tab') as TabType | null;
-  const urlRosterPage = parseInt(searchParams.get('rosterPage') || '1');
 
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>(urlTab || 'overview');
   const [statsCategory, setStatsCategory] = useState<string>('all');
-  const [rosterPage, setRosterPage] = useState(urlRosterPage);
-  const itemsPerPage = 10;
 
   // Update selectedSeason when currentSeasonData is loaded
   useEffect(() => {
@@ -47,20 +44,17 @@ export default function TeamDetailPage() {
     }
   }, [currentSeasonData, selectedSeason]);
 
-  // Update URL when tab or pagination changes
+  // Update URL when tab changes
   useEffect(() => {
     const params = new URLSearchParams();
     if (activeTab !== 'overview') {
       params.set('tab', activeTab);
     }
-    if (rosterPage > 1) {
-      params.set('rosterPage', rosterPage.toString());
-    }
 
     const query = params.toString();
     const newUrl = query ? `?${query}` : window.location.pathname;
     router.replace(newUrl, { scroll: false });
-  }, [activeTab, rosterPage, router]);
+  }, [activeTab, router]);
 
   // Fetch team details
   const { data: team, isLoading: teamLoading, error: teamError } = useQuery({
@@ -467,47 +461,59 @@ export default function TeamDetailPage() {
                 ))}
               </div>
 
-              {/* Stats Display */}
-              <div className="space-y-6">
-                {espnStats.splits.categories
-                  .filter((cat: any) => statsCategory === 'all' || cat.name === statsCategory)
-                  .map((category: any) => (
-                    <div key={category.name}>
-                      {statsCategory === 'all' && (
-                        <h3 className="text-lg font-semibold text-white mb-4 capitalize border-b border-gray-700 pb-2">
-                          {category.displayName}
-                        </h3>
-                      )}
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {category.stats.map((stat: any) => (
-                          <div key={stat.name} className="bg-gray-800/50 rounded-lg p-4 hover:bg-gray-800/70 transition-colors">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="text-sm text-gray-400 mb-1">{stat.displayName}</div>
-                                <div className="text-3xl font-bold text-white">{stat.displayValue}</div>
-                              </div>
-                              {stat.rank && stat.rank <= 100 && (
-                                <div className="ml-2">
-                                  <div className={`px-2 py-1 rounded text-xs font-semibold ${
-                                    stat.rank <= 10 ? 'bg-green-600 text-white' :
-                                    stat.rank <= 50 ? 'bg-blue-600 text-white' :
-                                    'bg-gray-700 text-gray-300'
+              {/* Stats Display - Dense Table Format */}
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="sticky top-0 bg-gray-900/95 backdrop-blur-sm z-10">
+                    <tr className="border-b-2 border-gray-700">
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider w-2/5">Statistic</th>
+                      <th className="text-right py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider w-1/5">Value</th>
+                      <th className="text-center py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider w-1/5">Rank</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {espnStats.splits.categories
+                      .filter((cat: any) => statsCategory === 'all' || cat.name === statsCategory)
+                      .map((category: any, catIndex: number) => (
+                        <React.Fragment key={category.name}>
+                          {statsCategory === 'all' && (
+                            <tr className="bg-gray-800/40">
+                              <td colSpan={3} className="py-2 px-4">
+                                <span className="text-xs font-bold text-gray-300 uppercase tracking-wide">
+                                  {category.displayName}
+                                </span>
+                              </td>
+                            </tr>
+                          )}
+                          {category.stats.map((stat: any, statIndex: number) => (
+                            <tr
+                              key={stat.name}
+                              className="border-b border-gray-800/50 hover:bg-gray-800/20 transition-colors"
+                            >
+                              <td className="py-2 px-4 text-sm text-gray-300">{stat.displayName}</td>
+                              <td className="py-2 px-4 text-right">
+                                <span className="text-sm font-medium text-white">{stat.displayValue}</span>
+                              </td>
+                              <td className="py-2 px-4 text-center">
+                                {stat.rank && stat.rank <= 363 ? (
+                                  <span className={`inline-block min-w-[44px] px-2 py-0.5 rounded text-xs font-semibold ${
+                                    stat.rank <= 25 ? 'bg-green-500/10 text-green-400' :
+                                    stat.rank <= 100 ? 'bg-blue-500/10 text-blue-400' :
+                                    stat.rank <= 200 ? 'bg-yellow-500/10 text-yellow-400' :
+                                    'bg-gray-600/20 text-gray-400'
                                   }`}>
                                     #{stat.rank}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                            {stat.rank && (
-                              <div className="text-xs text-gray-500 mt-2">
-                                National Rank: {stat.rankDisplayValue}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-700 text-xs">—</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </React.Fragment>
+                      ))}
+                  </tbody>
+                </table>
               </div>
             </>
           ) : (
@@ -629,9 +635,7 @@ export default function TeamDetailPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {roster
-                      .slice((rosterPage - 1) * itemsPerPage, rosterPage * itemsPerPage)
-                      .map((player: any) => (
+                    {roster.map((player: any) => (
                         <tr
                           key={player.season_player_id || `${player.player_id}-${player.season}`}
                           className="hover:bg-gray-800/50 transition-colors border-b border-gray-800"
@@ -669,29 +673,6 @@ export default function TeamDetailPage() {
                   </tbody>
                 </table>
               </div>
-
-              {/* Pagination for Roster */}
-              {roster.length > itemsPerPage && (
-                <div className="flex items-center justify-center space-x-2 mt-6">
-                  <button
-                    onClick={() => setRosterPage(Math.max(1, rosterPage - 1))}
-                    disabled={rosterPage === 1}
-                    className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Previous
-                  </button>
-                  <span className="text-gray-400">
-                    Page {rosterPage} of {Math.ceil(roster.length / itemsPerPage)}
-                  </span>
-                  <button
-                    onClick={() => setRosterPage(Math.min(Math.ceil(roster.length / itemsPerPage), rosterPage + 1))}
-                    disabled={rosterPage === Math.ceil(roster.length / itemsPerPage)}
-                    className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
             </>
           ) : (
             <p className="text-gray-400 text-center py-8">No roster information available</p>
