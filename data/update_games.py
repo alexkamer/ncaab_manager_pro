@@ -4,10 +4,15 @@ import json
 import concurrent.futures
 import threading
 import time
+import os
 from discover_completed_games import discover_new_completed_games
 
 # Thread-local storage for httpx clients
 _thread_local = threading.local()
+
+def get_db_path():
+    """Get database path that works from project root or data/ directory"""
+    return 'ncaab.db' if os.path.exists('ncaab.db') else 'data/ncaab.db'
 
 def get_client():
     """Get or create a thread-local httpx client"""
@@ -148,7 +153,7 @@ def get_game_stats(event_id):
 
 def insert_game_data(games_data, team_boxscores_data, player_boxscores_data):
     """Insert game data into database"""
-    conn = sqlite3.connect('data/ncaab.db')
+    conn = sqlite3.connect(get_db_path())
     cursor = conn.cursor()
 
     # Insert games
@@ -234,6 +239,89 @@ def insert_game_data(games_data, team_boxscores_data, player_boxscores_data):
     conn.commit()
     conn.close()
 
+def update_games(event_ids, verbose=True):
+    """
+    Fetch and insert games for a specific list of event IDs.
+
+    Args:
+        event_ids: List of ESPN event IDs to fetch
+        verbose: Print progress messages
+
+    Returns:
+        Dictionary with update statistics
+    """
+    start_time = time.time()
+
+    if not event_ids:
+        if verbose:
+            print("\n✓ No games to fetch")
+        return {
+            'games_added': 0,
+            'api_calls': 0,
+            'duration_seconds': 0,
+            'errors': 0
+        }
+
+    if verbose:
+        print(f"\nFetching game data for {len(event_ids)} games...")
+
+    all_games = []
+    all_team_boxscores = []
+    all_player_boxscores = []
+    error_count = 0
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        results = executor.map(get_game_stats, event_ids)
+
+        for game_info, team_stats, player_stats in results:
+            if game_info is None:
+                error_count += 1
+            elif len(team_stats) == 0:
+                # Skip incomplete games
+                pass
+            else:
+                all_games.append(game_info)
+                all_team_boxscores.extend(team_stats)
+                all_player_boxscores.extend(player_stats)
+
+    if verbose:
+        print(f"\n✓ Fetched {len(all_games)} complete games")
+        if error_count > 0:
+            print(f"  ⚠ {error_count} errors (see data/event_errors.log)")
+
+    # Insert into database
+    if all_games:
+        if verbose:
+            print(f"\nInserting into database...")
+        insert_game_data(all_games, all_team_boxscores, all_player_boxscores)
+        if verbose:
+            print(f"  ✓ {len(all_games)} games")
+            print(f"  ✓ {len(all_team_boxscores)} team boxscores")
+            print(f"  ✓ {len(all_player_boxscores)} player boxscores")
+
+    duration = time.time() - start_time
+
+    # Log the update
+    conn = sqlite3.connect(get_db_path())
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO update_log (table_name, operation, records_added, records_updated,
+                                api_calls, duration_seconds, error_count)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', ('games', 'backfill', len(all_games), 0, len(event_ids), duration, error_count))
+    conn.commit()
+    conn.close()
+
+    if verbose:
+        print(f"\n✓ Games update complete in {duration:.1f} seconds")
+
+    return {
+        'games_added': len(all_games),
+        'api_calls': len(event_ids),
+        'duration_seconds': duration,
+        'errors': error_count
+    }
+
 def update_games_daily(days_lookback=7, verbose=True):
     """
     Main function to update games table with new completed games.
@@ -304,7 +392,7 @@ def update_games_daily(days_lookback=7, verbose=True):
     duration = time.time() - start_time
 
     # Log the update
-    conn = sqlite3.connect('data/ncaab.db')
+    conn = sqlite3.connect(get_db_path())
     cursor = conn.cursor()
     cursor.execute('''
         INSERT INTO update_log (table_name, operation, records_added, records_updated,

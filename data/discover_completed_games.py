@@ -2,6 +2,7 @@ import httpx
 import sqlite3
 from datetime import datetime, timedelta
 import threading
+import os
 
 # Thread-local storage for httpx clients
 _thread_local = threading.local()
@@ -79,7 +80,9 @@ def fetch_events_for_month(year_month):
 
 def get_existing_game_ids(start_date):
     """Query database for existing game IDs since start_date"""
-    conn = sqlite3.connect('data/ncaab.db')
+    # Determine database path - works from project root or data/ directory
+    db_path = 'ncaab.db' if os.path.exists('ncaab.db') else 'data/ncaab.db'
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     cursor.execute("""
