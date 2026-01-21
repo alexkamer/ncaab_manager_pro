@@ -23,25 +23,28 @@ python3 update_daily.py [--days N] [--quiet]
 python3 backfill_season.py [YEAR] [YYYY-MM]
 ```
 **Purpose**: Backfill all games for a complete season.
-- Discovers all completed games for the specified season
+- Automatically reads season start/end dates from `seasons` table
 - For current season: fetches through today
-- For historical seasons: fetches through April 30th of that season
+- For historical seasons: fetches through actual season end date
 - Fetches complete game data including boxscores
 - Uses `groups=52` to capture all Division I games
 
 **Examples**:
 ```bash
-# Current season (2025-26, default)
+# Current season (auto-detects dates from database)
 python3 backfill_season.py
 
-# 2024-25 season (will stop at April 30, 2025)
-python3 backfill_season.py 2025 2024-11
+# 2024-25 season (auto-detects dates: July 2024 - April 2025)
+python3 backfill_season.py 2025
 
-# 2023-24 season (will stop at April 30, 2024)
-python3 backfill_season.py 2024 2023-11
+# 2023-24 season (auto-detects dates)
+python3 backfill_season.py 2024
+
+# Override start date if needed (advanced)
+python3 backfill_season.py 2025 2024-11
 ```
 
-**Important**: Historical season backfills automatically stop at April 30th to avoid pulling in games from the next season.
+**Note**: The script automatically queries the `seasons` table for accurate start/end dates. You only need to provide the season year.
 
 **When to run**:
 - First time setup
