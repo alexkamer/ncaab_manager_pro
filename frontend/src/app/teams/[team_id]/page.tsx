@@ -140,6 +140,8 @@ export default function TeamDetailPage() {
     queryKey: ['teamPlayerStats', team_id, selectedSeason],
     queryFn: () => teamsApi.getPlayerStats(team_id, selectedSeason!),
     enabled: !!team_id && selectedSeason !== null,
+    staleTime: 5 * 60 * 1000, // Keep data fresh for 5 minutes
+    gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
   });
 
   if (teamLoading) {
