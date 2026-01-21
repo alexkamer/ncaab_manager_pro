@@ -5,7 +5,7 @@ from typing import List, Optional
 import json
 
 from core.database import get_db
-from models.models import Team, Game, PlayerSeason
+from models.models import Team, Game, PlayerSeason, PlayerBoxscore
 from schemas.team import TeamResponse, TeamScheduleGame, TeamRoster, TeamWithStats
 from core.config import settings
 
@@ -215,3 +215,110 @@ def get_team_stats(
         "point_differential": round(ppg - opp_ppg, 1),
         "total_games": total_games
     }
+
+
+@router.get("/{team_id}/player-stats")
+def get_team_player_stats(
+    team_id: str,
+    season: int = Query(..., description="Season year"),
+    db: Session = Depends(get_db)
+):
+    """Get aggregated player statistics for a team's season"""
+    # Verify team exists
+    team = db.query(Team).filter(Team.id == team_id).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+
+    # Join player_boxscores with games to filter by season
+    # Aggregate stats by player
+    player_stats = db.query(
+        PlayerBoxscore.athlete_id,
+        PlayerBoxscore.athlete_name,
+        PlayerBoxscore.athlete_headshot,
+        PlayerBoxscore.athlete_jersey,
+        PlayerBoxscore.athlete_position_abbreviation,
+        func.count(PlayerBoxscore.event_id).label('games_played'),
+        func.sum(
+            case(
+                (PlayerBoxscore.PTS != None, func.cast(PlayerBoxscore.PTS, Integer)),
+                else_=0
+            )
+        ).label('total_points'),
+        func.sum(
+            case(
+                (PlayerBoxscore.REB != None, func.cast(PlayerBoxscore.REB, Integer)),
+                else_=0
+            )
+        ).label('total_rebounds'),
+        func.sum(
+            case(
+                (PlayerBoxscore.AST != None, func.cast(PlayerBoxscore.AST, Integer)),
+                else_=0
+            )
+        ).label('total_assists'),
+        func.sum(
+            case(
+                (PlayerBoxscore.STL != None, func.cast(PlayerBoxscore.STL, Integer)),
+                else_=0
+            )
+        ).label('total_steals'),
+        func.sum(
+            case(
+                (PlayerBoxscore.BLK != None, func.cast(PlayerBoxscore.BLK, Integer)),
+                else_=0
+            )
+        ).label('total_blocks'),
+        func.sum(
+            case(
+                (PlayerBoxscore.TO != None, func.cast(PlayerBoxscore.TO, Integer)),
+                else_=0
+            )
+        ).label('total_turnovers'),
+    ).join(
+        Game, PlayerBoxscore.event_id == Game.id
+    ).filter(
+        and_(
+            PlayerBoxscore.team_id == team_id,
+            Game.season_year == season,
+            Game.event_status_completed == 1
+        )
+    ).group_by(
+        PlayerBoxscore.athlete_id,
+        PlayerBoxscore.athlete_name,
+        PlayerBoxscore.athlete_headshot,
+        PlayerBoxscore.athlete_jersey,
+        PlayerBoxscore.athlete_position_abbreviation
+    ).all()
+
+    # Format the results
+    results = []
+    for stat in player_stats:
+        games = stat.games_played or 0
+        if games == 0:
+            continue
+
+        results.append({
+            "player_id": stat.athlete_id,
+            "player_name": stat.athlete_name,
+            "headshot": stat.athlete_headshot,
+            "jersey": stat.athlete_jersey,
+            "position": stat.athlete_position_abbreviation,
+            "games_played": games,
+            "total_points": stat.total_points or 0,
+            "total_rebounds": stat.total_rebounds or 0,
+            "total_assists": stat.total_assists or 0,
+            "total_steals": stat.total_steals or 0,
+            "total_blocks": stat.total_blocks or 0,
+            "total_turnovers": stat.total_turnovers or 0,
+            "ppg": round((stat.total_points or 0) / games, 1),
+            "rpg": round((stat.total_rebounds or 0) / games, 1),
+            "apg": round((stat.total_assists or 0) / games, 1),
+            "spg": round((stat.total_steals or 0) / games, 1),
+            "bpg": round((stat.total_blocks or 0) / games, 1),
+            "tpg": round((stat.total_turnovers or 0) / games, 1),
+        })
+
+    # Sort by PPG descending
+    results.sort(key=lambda x: x['ppg'], reverse=True)
+
+    return results

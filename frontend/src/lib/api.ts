@@ -87,6 +87,13 @@ export const teamsApi = {
     });
     return data;
   },
+
+  getPlayerStats: async (id: string, season: number) => {
+    const { data } = await api.get(`/teams/${id}/player-stats`, {
+      params: { season },
+    });
+    return data;
+  },
 };
 
 // Players API

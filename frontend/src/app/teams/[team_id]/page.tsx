@@ -135,6 +135,13 @@ export default function TeamDetailPage() {
     enabled: !!team_id && selectedSeason !== null,
   });
 
+  // Fetch player stats from boxscores
+  const { data: playerStats, isLoading: playerStatsLoading } = useQuery({
+    queryKey: ['teamPlayerStats', team_id, selectedSeason],
+    queryFn: () => teamsApi.getPlayerStats(team_id, selectedSeason!),
+    enabled: !!team_id && selectedSeason !== null,
+  });
+
   if (teamLoading) {
     return (
       <div className="flex justify-center py-12">
@@ -543,8 +550,89 @@ export default function TeamDetailPage() {
       {/* Player Stats Tab */}
       {activeTab === 'player-stats' && (
         <div className="glass rounded-lg p-6">
-          <h2 className="text-2xl font-bold text-white mb-6">Player Stats</h2>
-          <p className="text-gray-400 text-center py-8">Player statistics coming soon...</p>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-white">Player Statistics</h2>
+            <div className="flex items-center space-x-4">
+              <select
+                value={selectedSeason || ''}
+                onChange={(e) => setSelectedSeason(Number(e.target.value))}
+                className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+              >
+                {allSeasons?.slice(0, 10).map((season: any) => (
+                  <option key={season.year} value={season.year}>
+                    {season.displayName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {playerStatsLoading ? (
+            <div className="flex justify-center py-8">
+              <LoadingSpinner />
+            </div>
+          ) : playerStats && playerStats.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-700">
+                    <th className="text-left py-3 px-2 text-gray-400 font-semibold">Player</th>
+                    <th className="text-center py-3 px-2 text-gray-400 font-semibold">GP</th>
+                    <th className="text-center py-3 px-2 text-gray-400 font-semibold">PPG</th>
+                    <th className="text-center py-3 px-2 text-gray-400 font-semibold">RPG</th>
+                    <th className="text-center py-3 px-2 text-gray-400 font-semibold">APG</th>
+                    <th className="text-center py-3 px-2 text-gray-400 font-semibold">SPG</th>
+                    <th className="text-center py-3 px-2 text-gray-400 font-semibold">BPG</th>
+                    <th className="text-center py-3 px-2 text-gray-400 font-semibold">TPG</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {playerStats.map((player: any) => (
+                    <tr
+                      key={player.player_id}
+                      className="hover:bg-gray-800/50 transition-colors border-b border-gray-800"
+                    >
+                      <td className="py-3 px-2">
+                        <Link href={`/players/${player.player_id}`} className="flex items-center space-x-3 hover:text-blue-400">
+                          {player.headshot ? (
+                            <Image
+                              src={player.headshot.includes('espncdn.com') && !player.headshot.includes('scale=crop')
+                                ? `${player.headshot}?h=80&w=110&scale=crop`
+                                : player.headshot
+                              }
+                              alt={player.player_name}
+                              width={55}
+                              height={40}
+                              className="object-cover rounded"
+                            />
+                          ) : (
+                            <div className="w-[55px] h-10 bg-gray-700 flex items-center justify-center rounded">
+                              <span className="text-gray-500 text-xs font-semibold">
+                                {player.player_name.split(' ').map((n: string) => n[0]).join('')}
+                              </span>
+                            </div>
+                          )}
+                          <div>
+                            <span className="text-white font-medium block">{player.player_name}</span>
+                            <span className="text-gray-400 text-xs">{player.position} {player.jersey && `• #${player.jersey}`}</span>
+                          </div>
+                        </Link>
+                      </td>
+                      <td className="py-2 px-2 text-center text-gray-300">{player.games_played}</td>
+                      <td className="py-2 px-2 text-center text-white font-semibold">{player.ppg}</td>
+                      <td className="py-2 px-2 text-center text-gray-300">{player.rpg}</td>
+                      <td className="py-2 px-2 text-center text-gray-300">{player.apg}</td>
+                      <td className="py-2 px-2 text-center text-gray-300">{player.spg}</td>
+                      <td className="py-2 px-2 text-center text-gray-300">{player.bpg}</td>
+                      <td className="py-2 px-2 text-center text-gray-300">{player.tpg}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-gray-400 text-center py-8">No player statistics available for this season</p>
+          )}
         </div>
       )}
 
