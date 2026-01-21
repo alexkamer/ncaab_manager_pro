@@ -5,7 +5,7 @@ This script discovers and fetches all completed games for the current or specifi
 """
 
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from discover_completed_games import discover_new_completed_games
 from update_games import update_games
 
@@ -28,7 +28,9 @@ def backfill_season(season_year=None, season_start_month="2025-11"):
     print(f"{'='*60}\n")
 
     # Calculate date range for the season
-    season_start = datetime.strptime(f"{season_start_month}-01", "%Y-%m-%d")
+    # Start the day BEFORE the season start to capture games on the first day
+    season_start_date = datetime.strptime(f"{season_start_month}-01", "%Y-%m-%d")
+    season_start = season_start_date - timedelta(days=1)
 
     # Determine end date based on whether this is current season or historical
     current_year = datetime.now().year
@@ -36,15 +38,16 @@ def backfill_season(season_year=None, season_start_month="2025-11"):
         current_year += 1
 
     if season_year == current_year:
-        # Current season - go until today
-        season_end = datetime.now()
-        print(f"Season started: {season_start.date()}")
-        print(f"Backfilling through: {season_end.date()} (today)")
+        # Current season - go until the day AFTER today to capture today's games
+        season_end = datetime.now() + timedelta(days=1)
+        print(f"Season started: {season_start_date.date()}")
+        print(f"Backfilling through: {datetime.now().date()} (today)")
     else:
-        # Historical season - end in April of season year
-        season_end = datetime.strptime(f"{season_year}-04-30", "%Y-%m-%d")
-        print(f"Season started: {season_start.date()}")
-        print(f"Season ended: {season_end.date()}")
+        # Historical season - end the day AFTER April 30th
+        season_end_date = datetime.strptime(f"{season_year}-04-30", "%Y-%m-%d")
+        season_end = season_end_date + timedelta(days=1)
+        print(f"Season started: {season_start_date.date()}")
+        print(f"Season ended: {season_end_date.date()}")
 
     days_since_season_start = (season_end - season_start).days
     print(f"Looking back {days_since_season_start} days to find all games...\n")
@@ -81,7 +84,8 @@ def backfill_season(season_year=None, season_start_month="2025-11"):
     print(f"Database should now have all completed games for season {season_year-1}-{str(season_year)[-2:]}.")
 
     if season_year != current_year_check:
-        print(f"\nNote: Historical season backfill limited to {season_end.date()}")
+        season_end_display = datetime.strptime(f"{season_year}-04-30", "%Y-%m-%d")
+        print(f"\nNote: Historical season backfill limited to {season_end_display.date()}")
     print()
 
 if __name__ == "__main__":
