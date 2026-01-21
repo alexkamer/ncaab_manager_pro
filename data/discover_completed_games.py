@@ -120,24 +120,30 @@ def check_if_completed(event_id):
         # Silently skip errors (404s for invalid events, etc.)
         return None
 
-def discover_new_completed_games(days_lookback=7, verbose=True):
+def discover_new_completed_games(days_lookback=7, start_date=None, end_date=None, verbose=True):
     """
     Discover completed games in last N days without pre-generation.
     Returns only event IDs not already in database.
 
     Args:
-        days_lookback: Number of days to look back (default 7)
+        days_lookback: Number of days to look back (default 7). Ignored if start_date and end_date provided.
+        start_date: Optional explicit start date (datetime object)
+        end_date: Optional explicit end date (datetime object)
         verbose: Print progress messages (default True)
 
     Returns:
         List of new completed game IDs
     """
     if verbose:
-        print(f"\n=== Discovering Completed Games (last {days_lookback} days) ===\n")
+        if start_date and end_date:
+            print(f"\n=== Discovering Completed Games ===\n")
+        else:
+            print(f"\n=== Discovering Completed Games (last {days_lookback} days) ===\n")
 
     # 1. Calculate date range
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=days_lookback)
+    if start_date is None or end_date is None:
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days_lookback)
 
     if verbose:
         print(f"Date range: {start_date.date()} to {end_date.date()}")

@@ -49,12 +49,12 @@ def backfill_season(season_year=None, season_start_month="2025-11"):
         print(f"Season started: {season_start_date.date()}")
         print(f"Season ended: {season_end_date.date()}")
 
-    days_since_season_start = (season_end - season_start).days
-    print(f"Looking back {days_since_season_start} days to find all games...\n")
+    print(f"Date range: {season_start.date()} to {season_end.date()}\n")
 
     # Step 1: Discover all completed games for the season
     new_game_ids = discover_new_completed_games(
-        days_lookback=days_since_season_start,
+        start_date=season_start,
+        end_date=season_end,
         verbose=True
     )
 
