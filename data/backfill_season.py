@@ -27,12 +27,26 @@ def backfill_season(season_year=None, season_start_month="2025-11"):
     print(f"BACKFILLING SEASON {season_year-1}-{str(season_year)[-2:]}")
     print(f"{'='*60}\n")
 
-    # Calculate days lookback from season start to now
+    # Calculate date range for the season
     season_start = datetime.strptime(f"{season_start_month}-01", "%Y-%m-%d")
-    days_since_season_start = (datetime.now() - season_start).days
 
-    print(f"Season started: {season_start.date()}")
-    print(f"Days since season start: {days_since_season_start}")
+    # Determine end date based on whether this is current season or historical
+    current_year = datetime.now().year
+    if datetime.now().month < 7:
+        current_year += 1
+
+    if season_year == current_year:
+        # Current season - go until today
+        season_end = datetime.now()
+        print(f"Season started: {season_start.date()}")
+        print(f"Backfilling through: {season_end.date()} (today)")
+    else:
+        # Historical season - end in April of season year
+        season_end = datetime.strptime(f"{season_year}-04-30", "%Y-%m-%d")
+        print(f"Season started: {season_start.date()}")
+        print(f"Season ended: {season_end.date()}")
+
+    days_since_season_start = (season_end - season_start).days
     print(f"Looking back {days_since_season_start} days to find all games...\n")
 
     # Step 1: Discover all completed games for the season
@@ -55,11 +69,20 @@ def backfill_season(season_year=None, season_start_month="2025-11"):
 
     update_games(event_ids=new_game_ids, verbose=True)
 
+    # Recalculate current year for final message
+    current_year_check = datetime.now().year
+    if datetime.now().month < 7:
+        current_year_check += 1
+
     print(f"\n{'='*60}")
     print(f"✓ BACKFILL COMPLETE")
     print(f"{'='*60}\n")
     print(f"Added {len(new_game_ids)} games to the database.")
-    print(f"Database should now have all completed games for season {season_year}.\n")
+    print(f"Database should now have all completed games for season {season_year-1}-{str(season_year)[-2:]}.")
+
+    if season_year != current_year_check:
+        print(f"\nNote: Historical season backfill limited to {season_end.date()}")
+    print()
 
 if __name__ == "__main__":
     # Allow command line arguments
