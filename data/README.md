@@ -99,4 +99,9 @@ This adds performance indexes for player statistics queries.
 
 3. **Concurrency**: Scripts use ThreadPoolExecutor for parallel API calls (max 10 workers)
 
-4. **Rate Limiting**: Be mindful of ESPN API rate limits when running large backfills
+4. **API Efficiency**:
+   - Discovery phase only queries ESPN events API (lightweight)
+   - Completion checking happens during game data fetch (single API call per game)
+   - Incomplete games are automatically skipped without extra API calls
+
+5. **Rate Limiting**: Be mindful of ESPN API rate limits when running large backfills

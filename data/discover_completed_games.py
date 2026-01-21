@@ -97,28 +97,10 @@ def get_existing_game_ids(start_date):
 
 def check_if_completed(event_id):
     """
-    Check if a single event is completed by fetching its summary.
-    Returns event_id if completed, None otherwise.
+    DEPRECATED: This function is no longer used to avoid double API calls.
+    Completion checking is now done in update_games.py when fetching full game data.
     """
-    url = "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/summary"
-    params = {'event': event_id}
-
-    try:
-        response = get_client().get(url=url, params=params)
-        response.raise_for_status()
-        data = response.json()
-
-        # Check completion status
-        completed = data.get('header', {}).get('competitions', [{}])[0].get('status', {}).get('type', {}).get('completed', False)
-
-        if completed:
-            return event_id
-        else:
-            return None
-
-    except Exception as e:
-        # Silently skip errors (404s for invalid events, etc.)
-        return None
+    raise NotImplementedError("This function should not be called")
 
 def discover_new_completed_games(days_lookback=7, start_date=None, end_date=None, verbose=True):
     """
@@ -184,24 +166,12 @@ def discover_new_completed_games(days_lookback=7, start_date=None, end_date=None
             print("\n✓ No new games to check")
         return []
 
-    # 6. Check which ones are actually completed
+    # 6. Return all potentially new games (completion check happens in update_games.py)
     if verbose:
-        print(f"\nChecking completion status for {len(potentially_new)} events...")
+        print(f"\n✓ Found {len(potentially_new)} potentially new games")
+        print(f"   (Completion status will be verified during fetch)")
 
-    import concurrent.futures
-    completed_game_ids = []
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        results = executor.map(check_if_completed, list(potentially_new))
-
-        for result in results:
-            if result is not None:
-                completed_game_ids.append(result)
-
-    if verbose:
-        print(f"\n✓ Found {len(completed_game_ids)} new completed games")
-
-    return completed_game_ids
+    return list(potentially_new)
 
 if __name__ == "__main__":
     # Test the discovery function

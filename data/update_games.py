@@ -270,6 +270,7 @@ def update_games(event_ids, verbose=True):
     all_player_boxscores = []
     error_count = 0
 
+    incomplete_count = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         results = executor.map(get_game_stats, event_ids)
 
@@ -278,7 +279,7 @@ def update_games(event_ids, verbose=True):
                 error_count += 1
             elif len(team_stats) == 0:
                 # Skip incomplete games
-                pass
+                incomplete_count += 1
             else:
                 all_games.append(game_info)
                 all_team_boxscores.extend(team_stats)
@@ -286,6 +287,8 @@ def update_games(event_ids, verbose=True):
 
     if verbose:
         print(f"\n✓ Fetched {len(all_games)} complete games")
+        if incomplete_count > 0:
+            print(f"  ⓘ {incomplete_count} games not yet completed (skipped)")
         if error_count > 0:
             print(f"  ⚠ {error_count} errors (see data/event_errors.log)")
 
@@ -360,6 +363,7 @@ def update_games_daily(days_lookback=7, verbose=True):
     all_player_boxscores = []
     error_count = 0
 
+    incomplete_count = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         results = executor.map(get_game_stats, new_game_ids)
 
@@ -368,7 +372,7 @@ def update_games_daily(days_lookback=7, verbose=True):
                 error_count += 1
             elif len(team_stats) == 0:
                 # Skip incomplete games
-                pass
+                incomplete_count += 1
             else:
                 all_games.append(game_info)
                 all_team_boxscores.extend(team_stats)
@@ -376,6 +380,8 @@ def update_games_daily(days_lookback=7, verbose=True):
 
     if verbose:
         print(f"\n✓ Fetched {len(all_games)} complete games")
+        if incomplete_count > 0:
+            print(f"  ⓘ {incomplete_count} games not yet completed (skipped)")
         if error_count > 0:
             print(f"  ⚠ {error_count} errors (see data/event_errors.log)")
 
