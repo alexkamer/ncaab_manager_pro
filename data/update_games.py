@@ -12,7 +12,13 @@ _thread_local = threading.local()
 
 def get_db_path():
     """Get database path that works from project root or data/ directory"""
-    return 'ncaab.db' if os.path.exists('ncaab.db') else 'data/ncaab.db'
+    # Prefer data/ncaab.db as it's the canonical location
+    if os.path.exists('data/ncaab.db'):
+        return 'data/ncaab.db'
+    elif os.path.exists('ncaab.db'):
+        return 'ncaab.db'
+    else:
+        raise FileNotFoundError("Database not found at data/ncaab.db or ncaab.db")
 
 def get_client():
     """Get or create a thread-local httpx client"""

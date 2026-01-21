@@ -32,7 +32,13 @@ def backfill_season(season_year=None, season_start_month=None):
 
     # Try to get actual season dates from database if no override provided
     if season_start_month is None:
-        db_path = 'ncaab.db' if os.path.exists('ncaab.db') else 'data/ncaab.db'
+        # Prefer data/ncaab.db as it's the canonical location
+        if os.path.exists('data/ncaab.db'):
+            db_path = 'data/ncaab.db'
+        elif os.path.exists('ncaab.db'):
+            db_path = 'ncaab.db'
+        else:
+            db_path = 'data/ncaab.db'  # Will fail with helpful error
         try:
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()

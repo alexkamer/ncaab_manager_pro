@@ -81,7 +81,14 @@ def fetch_events_for_month(year_month):
 def get_existing_game_ids(start_date):
     """Query database for existing game IDs since start_date"""
     # Determine database path - works from project root or data/ directory
-    db_path = 'ncaab.db' if os.path.exists('ncaab.db') else 'data/ncaab.db'
+    # Prefer data/ncaab.db as it's the canonical location
+    if os.path.exists('data/ncaab.db'):
+        db_path = 'data/ncaab.db'
+    elif os.path.exists('ncaab.db'):
+        db_path = 'ncaab.db'
+    else:
+        raise FileNotFoundError("Database not found at data/ncaab.db or ncaab.db")
+
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
