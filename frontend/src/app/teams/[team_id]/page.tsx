@@ -485,7 +485,25 @@ export default function TeamDetailPage() {
                               </td>
                             </tr>
                           )}
-                          {category.stats.map((stat: any, statIndex: number) => (
+                          {category.stats
+                            .filter((stat: any) => {
+                              // Filter out useless stats
+                              const excludedStats = [
+                                'minutes', 'minutesPerGame', 'fantasyRating',
+                                'disqualifications', 'disqualificationsPerGame',
+                                'ejections', 'ejectionsPerGame',
+                                'gamesStarted', 'doubleDouble', 'tripleDouble',
+                                'flagrantFouls', 'flagrantFoulsPerGame'
+                              ];
+
+                              // Also filter out stats with 0 or empty values that aren't meaningful
+                              const isEmpty = stat.displayValue === '0' || stat.displayValue === '0.0' || stat.displayValue === '';
+                              const isExcluded = excludedStats.includes(stat.name);
+
+                              // Keep the stat if it's not excluded and either has a value or has a rank
+                              return !isExcluded && (!isEmpty || stat.rank);
+                            })
+                            .map((stat: any, statIndex: number) => (
                             <tr
                               key={stat.name}
                               className="border-b border-gray-800/50 hover:bg-gray-800/20 transition-colors"
