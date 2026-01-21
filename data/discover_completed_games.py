@@ -37,7 +37,7 @@ def fetch_events_for_month(year_month):
     base_url = "https://sports.core.api.espn.com/v2/sports/basketball/leagues/mens-college-basketball/events"
     params = {
         'dates': year_month,
-        'groups': '50',
+        'groups': '52',  # Group 52 includes all D1 games (50 misses early season games)
         'limit': 1000
     }
 
